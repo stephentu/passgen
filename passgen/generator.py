@@ -1,9 +1,11 @@
 from sampler import sample
 
-def generate(policy, length, urandom=False):
+def generate(charset, policy, length, urandom=False):
     assert length > 0
-    charset = policy.allowed_characters()
     n = len(charset)
     fname = '/dev/urandom' if urandom else '/dev/random'
     with open(fname) as f:
-        return ''.join(charset[sample(n, f)] for _ in xrange(length))
+        while 1:
+            password = ''.join(charset[sample(n, f)] for _ in xrange(length))
+            if policy is None or policy.accept(password):
+                return password
