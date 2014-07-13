@@ -1,6 +1,9 @@
-from passgen.sampler import sample, str2int
+from passgen.sampler import sample, sample_uniform_01, \
+        sample_discrete_log, str2int
 
 import numpy as np
+
+from nose.plugins.attrib import attr
 
 def _assert_uniform_dist0(n, f, nsamples, history, ntries):
     assert nsamples > 0
@@ -44,3 +47,38 @@ def test_str2int():
         s += chr(y & 0xFF)
         y >>= 8
     assert str2int(s) == x
+
+def test_sample_uniform_01():
+    nsamples, nbins, ntries = 100000, 100, 3
+    with open('/dev/urandom') as f:
+        samples = []
+        while ntries:
+            samples.extend([sample_uniform_01(f) for _ in xrange(nsamples)])
+            hist = np.array(
+                np.histogram(samples, bins=nbins, range=(0.0, 1.0), density=False)[0],
+                dtype=np.float)
+            hist /= hist.sum()
+            freq = 1./float(nbins)
+            diffs = np.abs(hist - freq)
+            if diffs.max() > (freq/10.):
+                ntries -= 1
+                continue
+            return # success
+        assert False, 'did not converge'
+
+def test_sample_discrete_log():
+    probs = np.array([0.3, 0.1, 0.6])
+    scores = np.log(probs)
+    counts = np.zeros(len(probs), dtype=np.int)
+    nsamples, ntries = 10000, 3
+    with open('/dev/urandom') as f:
+        while ntries:
+            for _ in xrange(nsamples):
+                counts[sample_discrete_log(scores, f)] += 1
+            dist = np.array(counts, dtype=np.float)
+            dist /= dist.sum()
+            if np.linalg.norm(probs - dist) > 0.01:
+                ntries -= 1
+                continue
+            return # success
+        assert False, 'did not converge'

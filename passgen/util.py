@@ -1,3 +1,5 @@
+import math
+
 # This allows us to avoid having a dependency on scipy>=0.10.x,
 # which speeds up travis builds
 try:
@@ -79,3 +81,6 @@ except ImportError:
         return out
 
 assert logsumexp
+
+def almost_equals(a, b, tol=1e-5):
+    return math.fabs(a - b) <= tol
