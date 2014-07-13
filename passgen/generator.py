@@ -2,18 +2,13 @@ from sampler import sample, sample_discrete
 from util import logsumexp, almost_equals
 
 import numpy as np
-import logging
-
-logger = logging.getLogger(__name__)
 
 def generate0(charset, policy, length, f):
     n = len(charset)
     while 1:
         password = ''.join(charset[sample(n, f)] for _ in xrange(length))
-        logger.debug("generated password: {}".format(password))
         if policy is None or policy.accept(password):
             return password
-        logger.debug("rejected password: {}".format(password))
 
 def generate(charset, policy, length, urandom):
     assert length > 0
