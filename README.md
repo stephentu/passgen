@@ -16,7 +16,7 @@ Usage
 Look at `api.py` for the supported services. Please submit pull requests to add more. 
 
     from passgen.api import *
-    g = google()
+    g = google(limit=25)
     g.generate(urandom=True)
     # 'u`FQM|+/3(X?Hb@[NNM G7opn'
     b = boa()
