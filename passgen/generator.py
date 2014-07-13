@@ -1,9 +1,11 @@
 from sampler import sample
-
+import numpy as np
+from scipy.misc import logsumexp
 import logging
+
 logger = logging.getLogger(__name__)
 
-def generate(charset, policy, length, urandom=False):
+def generate(charset, policy, length, urandom):
     assert length > 0
     n = len(charset)
     fname = '/dev/urandom' if urandom else '/dev/random'
@@ -14,3 +16,14 @@ def generate(charset, policy, length, urandom=False):
             if policy is None or policy.accept(password):
                 return password
             logger.debug("rejected password: {}".format(password))
+
+def generate_variable(charset, policy, min_length, max_length, urandom):
+    """
+    min_length, max_length inclusive
+    """
+    assert min_length > 0
+    assert min_length <= max_length
+    n = len(charset)
+    scores = np.arange(min_length, max_length+1) * np.log(n)
+    scores -= logsumexp(scores)
+    probs = np.exp(scores)

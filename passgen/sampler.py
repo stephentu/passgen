@@ -1,7 +1,7 @@
 def str2int(s):
     n = 0
     for i, ch in enumerate(s):
-        n += (ord(ch) << i)
+        n += (ord(ch) << (i*8))
     return n
 
 def sample(n, r):
@@ -26,3 +26,11 @@ def sample(n, r):
         rng = rng % x
         if rng < n:
             return rng
+
+
+def sample_uniform_01(r):
+    """
+    Generate a random float between [0, 1)
+    """
+    bytes = 8
+    return float(str2int(r.read(bytes))) / float(1 << bytes*8)

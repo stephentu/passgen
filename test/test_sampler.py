@@ -1,4 +1,4 @@
-from passgen.sampler import sample
+from passgen.sampler import sample, str2int
 
 import numpy as np
 
@@ -35,3 +35,12 @@ def test_histograms_GE_256():
         _assert_uniform_dist(256, f, nsamples=10000)
         _assert_uniform_dist(4327, f, nsamples=10000)
         _assert_uniform_dist(10000, f, nsamples=10000)
+
+def test_str2int():
+    x = 8522348329432189L
+    y = x
+    s = ''
+    while y:
+        s += chr(y & 0xFF)
+        y >>= 8
+    assert str2int(s) == x
