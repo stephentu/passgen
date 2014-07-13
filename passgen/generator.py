@@ -1,6 +1,7 @@
 from sampler import sample
+from util import logsumexp
+
 import numpy as np
-from scipy.misc import logsumexp
 import logging
 
 logger = logging.getLogger(__name__)
