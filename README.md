@@ -1,4 +1,4 @@
-passgen
+passgen [![Build Status](https://travis-ci.org/stephentu/passgen.svg?branch=master)](https://travis-ci.org/stephentu/passgen)
 =======
 
 A simple random password generator (using either `/dev/random` or `/dev/urandom`) for various online services such as g-mail and various banking websites. 
