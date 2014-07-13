@@ -18,10 +18,11 @@ def sample(n, r):
         x <<= 1
         bits += 1
     assert n <= x
+    bytes = (bits / 8 + 1) if bits % 8 else (bits / 8)
 
     # rejection sample on random integers from [0, x)
     while 1:
-        rng = str2int(r.read(bits))
+        rng = str2int(r.read(bytes))
         rng = rng % x
         if rng < n:
             return rng
