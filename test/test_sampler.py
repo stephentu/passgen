@@ -10,11 +10,14 @@ def _assert_uniform_dist0(n, f, nsamples, history, ntries):
     hist /= hist.sum()
     freq = 1./float(n)
     diffs = np.abs(hist - freq)
-    if diffs.max() > 0.01:
+    if diffs.max() > 0.005:
         if ntries:
             _assert_uniform_dist0(n, f, nsamples, history, ntries - 1)
         else:
+            print n, hist
             assert False, 'probabilities did not converge to uniform'
+    # passed
+    print n, hist
 
 def _assert_uniform_dist(n, f, nsamples, ntries=3):
     assert ntries > 0
@@ -22,9 +25,8 @@ def _assert_uniform_dist(n, f, nsamples, ntries=3):
 
 def test_histograms_LT_256():
     with open('/dev/urandom') as f:
-        _assert_uniform_dist(5, f, nsamples=10000)
-        _assert_uniform_dist(13, f, nsamples=10000)
-        _assert_uniform_dist(2, f, nsamples=10000)
+        for i in xrange(2, 20):
+            _assert_uniform_dist(i, f, nsamples=50000)
         _assert_uniform_dist(184, f, nsamples=10000)
         _assert_uniform_dist(255, f, nsamples=10000)
 
