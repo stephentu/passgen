@@ -1,0 +1,177 @@
+\documentclass[10pt]{article}
+\usepackage{fullpage}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amsthm}
+%\usepackage{mathtools}
+%\usepackage{amsfonts}
+%\usepackage{amsthm}
+%\usepackage{setspace}
+%\usepackage{algorithm}
+%\usepackage{algpseudocode}
+%\usepackage{times}
+%\usepackage{etoolbox}% http://ctan.org/pkg/etoolbox
+\usepackage{enumerate}
+\usepackage{bbm}
+\usepackage{mathtools}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{minted}
+
+\newtheorem{myprop}{Proposition}
+
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\G}{\mathcal{G}}
+\newcommand{\floor}[1]{\lfloor #1 \rfloor}
+\newcommand{\ceil}[1]{\lceil #1 \rceil}
+\newcommand{\ind}{\mathbbm{1}}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\Unif}{\mathrm{Unif}}
+\newcommand\defeq{\stackrel{\mathclap{\normalfont\tiny\mbox{def}}}{=}}
+\newcommand\rgets{\stackrel{\mathclap{\normalfont\tiny\mbox{\$}}}{\gets}}
+
+\title{Security analysis of \texttt{passgen}}
+\date{}
+\author{Stephen Tu \\ steve33671@gmail.com}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\texttt{passgen} is a simple tool for generating cryptographically random
+passwords for various online services including banking services such as
+American Express, Fidelity, etc. While conceptually the problem of generating a
+random password is quite trivial (e.g. draw random characters from the allowed
+character set), there are a few subtle implementation issues that arise when
+ensuring that the resulting implementation is indeed cryptographically secure.
+
+The purpose of this document is to outline \texttt{passgen}'s approach to these
+issues. The discussion here is neither groundbreaking nor technically
+difficult; this is meant as a easy, fun read. \textit{Disclaimer}: the author is
+not a security expert by any means, so comments/corrects are very much welcome
+and appreciated.
+
+\section{Secure random string generation}
+A string/password is nothing more than a relabelling (bijection) between $\A$,
+the set of characters allowed (the alphabet), and the integer set $\{0, ...,
+\abs{\A}-1\}$. Therefore, it might be tempting to generate passwords with the 
+simple snippet below:
+\begin{minted}{python}
+from random import randint
+from string import letters, digits
+
+def generate(length):
+    charset = letters + digits # [a-zA-Z0-9]
+    return ''.join(charset[randint(0, len(charset)-1)] for _ in xrange(length))
+\end{minted}
+This, unfortunately, is not a secure implementation. In fact, the python
+doc\footnote{\url{https://docs.python.org/2/library/random.html}} for the
+\verb|random| module explicitly states:
+\begin{verbatim}
+Warning: The pseudo-random generators of this module should not be used for
+security purposes.  Use os.urandom() or SystemRandom if you require a
+cryptographically secure pseudo-random number generator.
+\end{verbatim}
+This should not be surprising; the reason is that for efficiency (and
+portability) purposes, the default random number generator in standard
+libraries is typically a \emph{pseudo random number generator} (PRNG).  A PRNG
+is completely deterministic \emph{once} the underlying state is known.  One of
+the most well known PRNGs is the \emph{linear congruential generator}, which
+given a state $s_n$, generates the $n+1$-th random number via the simple formula:
+\begin{equation*}
+  s_{n+1} \gets a s_n + c \mod{m}
+\end{equation*}
+with well known choices for $a, c,
+m$.\footnote{\url{http://en.wikipedia.org/wiki/Linear_congruential_generator}}
+Thus, while PRNGs are fast, if an attacker can guess the state, then she can
+predict with 100\% accuracy the resulting coin flips from the PRNG.
+
+\subsection{OS support for entropy generation} To deal with this problem when
+security matters, operating systems provide first class support for generating
+true randomness; the python doc warning hints at this. On Linux, two devices
+\texttt{/dev/random} and \texttt{/dev/urandom} are available. The man
+page\footnote{\url{http://man7.org/linux/man-pages/man4/random.4.html}}
+provides a detailed explanation of the difference. For the purposes of this
+discussion, we won't care which one is used, since both expose the same
+interface to our tool. The interface exposed is very unix-y: both
+\texttt{/dev/random} and \texttt{/dev/urandom} look like any other read-only
+file to our application, and so we can use the standard POSIX \verb|open| and
+\verb|read| filesystem API to access the entropy.
+
+In some sense we are already done; the hard question of generating true,
+cryptographically secure randomness has been punted to the kernel and so we
+simply need to take it on faith and use one of the random devices. However, two
+issues remain:
+\begin{enumerate}
+  \item Since \verb|/dev/{,u}random| looks like a file, the smallest unit of data
+    we can read out of it is a byte (8 bits). How can we use this primitive to induce
+    a uniform distribution on any arbitrary discrete set $\X$?
+  \item Many sites (sadly) have higher level requirements on passwords such as 
+    a password must contain at least one letter and digit or cannot contain
+    more than 5 consecutive digits, etc. Programatically, we can model each
+    requirement as a predicate $p$ which takes a password and returns true iff
+    the input password satisfies the requirements. How do we efficiently sample
+    a password \emph{uniformly} at random without resorting to enumeration?
+\end{enumerate}
+We will focus the remainder of this document on answering these two questions.
+Our main tool will be the simple, elegant idea of \emph{rejection sampling}. 
+
+\section{Sampling from arbitrary discrete uniform distributions}
+Let's set up some notation. Let $\X$ denote a finite set over some arbitrary
+discrete alphabet, and let $Y$ be a random variable. We write $Y \sim
+\Unif(\X)$ to indicate that $Y$ has the uniform distribution on $\X$.  That is,
+the probability mass function of $Y$ is $\Pr(Y=y) = \frac{1}{\abs{\X}}
+\ind_{\X}(y)$.
+
+From our discussion above, we will assume that \verb|/dev/{,u}random| provides
+us with a secure implementation of $Y_k \sim \Unif(\{0, ..., 2^{8k} - 1\}) \defeq \G_k$ for some $k \geq 1$.
+%
+The goal will be to produce an implementation of $Z \sim \Unif(\X)$ for any
+$\X$ given only $Y_k \sim \G_k$. Wlog we assume $\X = \{0, ..., n-1\}$ for some $n
+\geq 1$.
+
+At first, it may be tempting to simply pick the smallest $k$ such that $2^{8k}
+\geq n$, take $Z = Y_k \mod{n}$ and call it a day. It is
+important to emphasize: \textbf{this is absolutely incorrect!}.
+%
+To see why, take $n=3$ and $k=1$. Now consider $N_i = \{ 0 \leq x < 256 : x = i \mod{3}
+\}$ for $i \in \{0,1,2\}$. It is not hard to see that $\abs{N_0} = 86$ but
+$\abs{N_1}=\abs{N_2} = 85$. Therefore, $\Pr(Z=0) = 0.3359$ but
+$\Pr(Z=1)=\Pr(Z=2)=0.3320$!
+
+However, this strategy \emph{does} work if $n$ is a power of two, that is
+$n=2^l$ for some $l \geq 0$. The easiest way to see this is to consider the
+binary representation of $Y_k$-- $Y_k$ is nothing more than a random bitstring
+from $\{0,1\}^{8k}$. Recalling that taking a number mod $n$ when $n$ is a power
+of two is equivalent to taking a bitwise \verb|and| with $n-1$, then since
+$n=2^{l}$, $Z$ is simply the first $l$ bits of $Y_k$. Since $Y_k$ is uniform,
+the marginal distribution of the first $l$ bits (the distribution of $Z$) is
+also uniform.
+
+We're almost there. We've turned our sampler from $G_k$ into a sampler from
+$Z_l = \Unif(\{0, ..., 2^l - 1\}) \defeq H_l$ for any $l \geq 0$. The remaining
+step to create an arbitrary sampler from $\Unif(\{0,...,n-1\})$ is to apply a
+rejection sampling step. Consider the following algorithm:
+\begin{enumerate}
+  \item Set $l$ such that $2^l \geq n$.
+  \item Sample $Y \rgets Z_l$.
+  \item If $Y < n$ then \verb|accept| $Y$, otherwise \verb|reject| $Y$ and go back to step 2.
+\end{enumerate}
+\begin{myprop}
+The rejection sampler above satisfies $\Pr(Y=i | \normalfont{\texttt{accept}})
+= \frac{1}{n}$ if $0 \leq i < n$, and zero otherwise.
+\end{myprop}
+\begin{proof}
+By the definition of conditional probability, we have
+\begin{align*}
+  \Pr(Y=i|\texttt{accept}) = \frac{\Pr(Y=i, \texttt{accept})}{\Pr(\texttt{accept})} 
+  = \frac{\Pr(Y=i)\Pr(\texttt{accept}|Y=i)}{\Pr(\texttt{accept})}
+\end{align*}
+Noting that $\Pr(\texttt{accept}) = \Pr(Y<n) = \frac{n}{2^l}$, $\Pr(Y=i)=\frac{1}{2^l}$, and 
+$\Pr(\texttt{accept}|Y=i) = \ind_{\{0, ..., n-1\}}(i)$, we have 
+that $\Pr(Y=i|\texttt{accept}) = \frac{1/2^l}{n/2^l} = \frac{1}{n} \ind_{\{0, ..., n-1\}}(i)$
+which yields the claim.
+\end{proof}
+\end{document}
