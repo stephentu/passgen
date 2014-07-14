@@ -3,7 +3,8 @@ from charsets import \
         displayable_charset, \
         amex_charset, \
         fidelity_charset, \
-        boa_charset
+        boa_charset, \
+        chase_charset
 from policies import one_letter_one_number, \
         does_not_start_with, does_not_end_with, \
         repeated_letters_or_digits, consecutive_digits, \
@@ -54,3 +55,11 @@ class fidelity(api):
         ])
         super(fidelity, self).__init__(
                 fidelity_charset, p, min_length, max_length)
+
+class chase(api):
+    def __init__(self,
+                 min_length=limits.chase[0],
+                 max_length=limits.chase[1]):
+        super(chase, self).__init__(
+                chase_charset, one_letter_one_number(),
+                min_length, max_length)
