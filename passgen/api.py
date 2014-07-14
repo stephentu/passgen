@@ -1,7 +1,10 @@
 from generator import generate_variable
-from charsets import displayable_charset, amex_charset
+from charsets import displayable_charset, \
+        amex_charset, fidelity_charset
 from policies import one_letter_one_number, \
-        does_not_start_with, does_not_end_with, pipeline
+        does_not_start_with, does_not_end_with, \
+        repeated_letters_or_digits, consecutive_digits, \
+        pipeline
 
 import limits
 import string
@@ -41,3 +44,14 @@ class boa(api):
             does_not_end_with(string.digits),
         ])
         super(boa, self).__init__(amex_charset, p, min_length, max_length)
+
+class fidelity(api):
+    def __init__(self,
+                 min_length=limits.fidelity[0],
+                 max_length=limits.fidelity[1]):
+        p = pipeline([
+            repeated_letters_or_digits(6),
+            consecutive_digits(6),
+        ])
+        super(fidelity, self).__init__(
+                fidelity_charset, p, min_length, max_length)

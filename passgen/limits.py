@@ -20,3 +20,7 @@ google = (8, 100)
 https://securemessaging.bankofamerica.com/srt/help.do?appid=12
 """
 boa = (8, 20)
+
+"""
+"""
+fidelity = (6, 12)
