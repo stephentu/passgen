@@ -7,6 +7,9 @@ https://sso.americanexpress.com/SSO/request?request_type=un_createid&ssolang=en_
 """
 amex_charset = string.digits + string.lowercase + '%&_?#=-'
 
+_boa_blacklist = '$<>&^![] '
+boa_charset = ''.join(ch for ch in (string.digits + string.letters + string.punctuation) if ch not in _boa_blacklist)
+
 """
 https://fps.fidelity.com/ftgw/Fps/pages/SharedExp/defaultWeb/common2/scripts/validation.js
 

@@ -1,6 +1,9 @@
 from generator import generate_variable
-from charsets import displayable_charset, \
-        amex_charset, fidelity_charset
+from charsets import \
+        displayable_charset, \
+        amex_charset, \
+        fidelity_charset, \
+        boa_charset
 from policies import one_letter_one_number, \
         does_not_start_with, does_not_end_with, \
         repeated_letters_or_digits, consecutive_digits, \
@@ -38,12 +41,8 @@ class boa(api):
     def __init__(self,
                  min_length=limits.boa[0],
                  max_length=limits.boa[1]):
-        p = pipeline([
-            one_letter_one_number(),
-            does_not_start_with(string.digits),
-            does_not_end_with(string.digits),
-        ])
-        super(boa, self).__init__(amex_charset, p, min_length, max_length)
+        super(boa, self).__init__(
+                boa_charset, one_letter_one_number(), min_length, max_length)
 
 class fidelity(api):
     def __init__(self,
