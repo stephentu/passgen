@@ -24,11 +24,15 @@
 \newcommand{\A}{\mathcal{A}}
 \newcommand{\X}{\mathcal{X}}
 \newcommand{\G}{\mathcal{G}}
+\newcommand{\HH}{\mathcal{H}}
+
 \newcommand{\floor}[1]{\lfloor #1 \rfloor}
 \newcommand{\ceil}[1]{\lceil #1 \rceil}
 \newcommand{\ind}{\mathbbm{1}}
 \newcommand{\abs}[1]{\left| #1 \right|}
 \newcommand{\Unif}{\mathrm{Unif}}
+\newcommand{\supp}{\mathrm{supp}}
+\renewcommand{\Pr}{\mathrm{Pr}}
 \newcommand\defeq{\stackrel{\mathclap{\normalfont\tiny\mbox{def}}}{=}}
 \newcommand\rgets{\stackrel{\mathclap{\normalfont\tiny\mbox{\$}}}{\gets}}
 
@@ -151,12 +155,12 @@ the marginal distribution of the first $l$ bits (the distribution of $Z$) is
 also uniform.
 
 We're almost there. We've turned our sampler from $G_k$ into a sampler from
-$Z_l = \Unif(\{0, ..., 2^l - 1\}) \defeq H_l$ for any $l \geq 0$. The remaining
-step to create an arbitrary sampler from $\Unif(\{0,...,n-1\})$ is to apply a
-rejection sampling step. Consider the following algorithm:
+$H_l \defeq \Unif(\{0, ..., 2^l - 1\})$ for any $l \geq 0$. The remaining step
+to create an arbitrary sampler from $\Pi_{n} \defeq \Unif(\{0,...,n-1\})$ is to
+apply a rejection sampling step.  Consider the following algorithm:
 \begin{enumerate}
   \item Set $l$ such that $2^l \geq n$.
-  \item Sample $Y \rgets Z_l$.
+  \item Sample $Y \rgets \HH_l$.
   \item If $Y < n$ then \verb|accept| $Y$, otherwise \verb|reject| $Y$ and go back to step 2.
 \end{enumerate}
 \begin{myprop}
@@ -174,4 +178,20 @@ $\Pr(\texttt{accept}|Y=i) = \ind_{\{0, ..., n-1\}}(i)$, we have
 that $\Pr(Y=i|\texttt{accept}) = \frac{1/2^l}{n/2^l} = \frac{1}{n} \ind_{\{0, ..., n-1\}}(i)$
 which yields the claim.
 \end{proof}
+Note that in our proof, we did not use any property of the distribution $\HH_l$
+other than the fact that the support of $\HH_l$ contains the support of $\Pi_n$.
+In fact, we could have replaced $\HH_l$ with $\G_k$ for any $k$ such that $2^{8k}
+\geq n$ and the proof remains valid. This observation leads to two main observations, the
+first of which we will discuss now. Why did we use (prefer) the proposal distribution
+$\HH_l$ over $\G_k$ when both are correct? The answer is $\HH_l$ is more \emph{efficient}
+than $\G_k$, where efficient means the probability of accepting a sample from 
+$\HH_l$ is greater than accepting a sample from $\G_k$. This is easy to see,
+since 
+\begin{equation*}
+    \Pr_{Y \sim \HH_l}(\texttt{reject}) = \frac{1}{\abs{\supp(\HH_l) \setminus \supp(\Pi_n)}}
+        \leq \frac{1}{\abs{\supp(\G_k)\setminus\supp(\Pi_n)}} = \Pr_{Y \sim \G_k}(\texttt{reject})
+\end{equation*}
+
+\section{Sampling from predicate defined domains}
+
 \end{document}
