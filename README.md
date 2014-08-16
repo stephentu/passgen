@@ -17,8 +17,8 @@ Look at `api.py` for the supported services. Please submit pull requests to add 
 
     from passgen.api import *
     g = google(max_limit=25)
-    g.generate(urandom=True) # use /dev/urandom, fast but insecure entropy
+    g.generate(urandom=True) # use /dev/urandom (faster)
     # 'u`FQM|+/3(X?Hb@[NNM G7opn'
     b = boa()
-    b.generate(urandom=False) # use /dev/random, might be slowish
+    b.generate(urandom=False) # use /dev/random (slower)
     # 'euwzUBLDW&uaunCu0sk%'
