@@ -38,7 +38,7 @@
 
 \title{Security analysis of \texttt{passgen}}
 \date{}
-\author{Stephen Tu \\ steve33671@gmail.com}
+\author{Stephen Tu \\ \texttt{tu.stephenl@gmail.com}}
 
 \begin{document}
 \maketitle
@@ -112,6 +112,9 @@ issues remain:
   \item Since \verb|/dev/{,u}random| looks like a file, the smallest unit of data
     we can read out of it is a byte (8 bits). How can we use this primitive to induce
     a uniform distribution on any arbitrary discrete set $\X$?
+  \item Given a uniform distribution on an arbitrary discrete set $\X$, how can
+    we generate a uniform sampler on $\X^{m,n} \defeq \X^m \cup \X^{m+1} \cup ... \cup \X^{n}$ 
+    where $m \leq n$?
   \item Many sites (sadly) have higher level requirements on passwords such as 
     a password must contain at least one letter and digit or cannot contain
     more than 5 consecutive digits, etc. Programatically, we can model each
@@ -126,8 +129,7 @@ Our main tool will be the simple, elegant idea of \emph{rejection sampling}.
 Let's set up some notation. Let $\X$ denote a finite set over some arbitrary
 discrete alphabet, and let $Y$ be a random variable. We write $Y \sim
 \Unif(\X)$ to indicate that $Y$ has the uniform distribution on $\X$.  That is,
-the probability mass function of $Y$ is $\Pr(Y=y) = \frac{1}{\abs{\X}}
-\ind_{\X}(y)$.
+the probability mass function of $Y$ is $\Pr(Y=y) = \frac{1}{\abs{\X}}$ for $y \in \X$.
 
 From our discussion above, we will assume that \verb|/dev/{,u}random| provides
 us with a secure implementation of $Y_k \sim \Unif(\{0, ..., 2^{8k} - 1\}) \defeq \G_k$ for some $k \geq 1$.
@@ -154,8 +156,9 @@ $n=2^{l}$, $Z$ is simply the first $l$ bits of $Y_k$. Since $Y_k$ is uniform,
 the marginal distribution of the first $l$ bits (the distribution of $Z$) is
 also uniform.
 
-We're almost there. We've turned our sampler from $G_k$ into a sampler from
-$H_l \defeq \Unif(\{0, ..., 2^l - 1\})$ for any $l \geq 0$. The remaining step
+\paragraph{Algorithm.}
+We're almost there. We've turned our sampler from $\G_k$ into a sampler from
+$\HH_l \defeq \Unif(\{0, ..., 2^l - 1\})$ for any $l \geq 0$. The remaining step
 to create an arbitrary sampler from $\Pi_{n} \defeq \Unif(\{0,...,n-1\})$ is to
 apply a rejection sampling step.  Consider the following algorithm:
 \begin{enumerate}
@@ -181,8 +184,9 @@ which yields the claim.
 Note that in our proof, we did not use any property of the distribution $\HH_l$
 other than the fact that the support of $\HH_l$ contains the support of $\Pi_n$.
 In fact, we could have replaced $\HH_l$ with $\G_k$ for any $k$ such that $2^{8k}
-\geq n$ and the proof remains valid. This observation leads to two main observations, the
-first of which we will discuss now. Why did we use (prefer) the proposal distribution
+\geq n$ and the proof remains valid. 
+%This observation leads to two main observations, the first of which we will discuss now. 
+Why did we use (prefer) the proposal distribution
 $\HH_l$ over $\G_k$ when both are correct? The answer is $\HH_l$ is more \emph{efficient}
 than $\G_k$, where efficient means the probability of accepting a sample from 
 $\HH_l$ is greater than accepting a sample from $\G_k$. This is easy to see,
