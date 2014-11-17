@@ -44,12 +44,13 @@
 \maketitle
 
 \section{Introduction}
-\texttt{passgen} is a simple tool for generating cryptographically random
-passwords for various online services including banking services such as
-American Express, Fidelity, etc. While conceptually the problem of generating a
-random password is quite trivial (e.g. draw random characters from the allowed
-character set), there are a few subtle implementation issues that arise when
-ensuring that the resulting implementation is indeed cryptographically secure.
+\texttt{passgen}\footnote{\url{https://github.com/stephentu/passgen}} is a
+simple tool for generating cryptographically random passwords for various
+online services including banking services such as American Express, Fidelity,
+etc. While conceptually the problem of generating a random password is quite
+trivial (e.g. draw random characters from the allowed character set), there are
+a few subtle implementation issues that arise when ensuring that the resulting
+implementation is indeed cryptographically secure.
 
 The purpose of this document is to outline \texttt{passgen}'s approach to these
 issues. The discussion here is neither groundbreaking nor technically
@@ -81,7 +82,7 @@ cryptographically secure pseudo-random number generator.
 This should not be surprising; the reason is that for efficiency (and
 portability) purposes, the default random number generator in standard
 libraries is typically a \emph{pseudo random number generator} (PRNG).  A PRNG
-is completely deterministic \emph{once} the underlying state is known.  One of
+is completely deterministic once the underlying state is known.  One of
 the most well known PRNGs is the \emph{linear congruential generator}, which
 given a state $s_n$, generates the $n+1$-th random number via the simple formula:
 \begin{equation*}
@@ -89,12 +90,13 @@ given a state $s_n$, generates the $n+1$-th random number via the simple formula
 \end{equation*}
 with well known choices for $a, c,
 m$.\footnote{\url{http://en.wikipedia.org/wiki/Linear_congruential_generator}}
-Thus, while PRNGs are fast, if an attacker can guess the state, then she can
-predict with 100\% accuracy the resulting coin flips from the PRNG.
+Thus, while PRNGs are fast, if an attacker can guess the state $s_n$, then she
+can predict with 100\% accuracy the resulting coin flips (e.g. $s_{n+k}$ for $k
+\geq 1$) from the PRNG.
 
 \subsection{OS support for entropy generation} To deal with this problem when
 security matters, operating systems provide first class support for generating
-true randomness; the python doc warning hints at this. On Linux, two devices
+randomness; the python doc warning hints at this. On Linux, two devices
 \texttt{/dev/random} and \texttt{/dev/urandom} are available. The man
 page\footnote{\url{http://man7.org/linux/man-pages/man4/random.4.html}}
 provides a detailed explanation of the difference. For the purposes of this
@@ -104,9 +106,9 @@ interface to our tool. The interface exposed is very unix-y: both
 file to our application, and so we can use the standard POSIX \verb|open| and
 \verb|read| filesystem API to access the entropy.
 
-In some sense we are already done; the hard question of generating true,
+\paragraph{Issues.} In some sense we are already done; the hard question of generating true,
 cryptographically secure randomness has been punted to the kernel and so we
-simply need to take it on faith and use one of the random devices. However, two
+simply need to take it on faith and use one of the random devices. However, several
 issues remain:
 \begin{enumerate}
   \item Since \verb|/dev/{,u}random| looks like a file, the smallest unit of data
@@ -117,12 +119,12 @@ issues remain:
     where $m \leq n$?
   \item Many sites (sadly) have higher level requirements on passwords such as 
     a password must contain at least one letter and digit or cannot contain
-    more than 5 consecutive digits, etc. Programatically, we can model each
+    more than 5 consecutive digits, etc. We can model each
     requirement as a predicate $p$ which takes a password and returns true iff
     the input password satisfies the requirements. How do we efficiently sample
     a password \emph{uniformly} at random without resorting to enumeration?
 \end{enumerate}
-We will focus the remainder of this document on answering these two questions.
+We will focus the remainder of this document on answering these questions.
 Our main tool will be the simple, elegant idea of \emph{rejection sampling}. 
 
 \section{Sampling from arbitrary discrete uniform distributions}
@@ -168,15 +170,16 @@ apply a rejection sampling step.  Consider the following algorithm:
   \item If $Y < n$ then \verb|accept| $Y$, otherwise \verb|reject| $Y$ and go back to step 2.
 \end{enumerate}
 \begin{myprop}
+\label{prop:samp1}
 The rejection sampler above satisfies $\Pr(Y=i | \normalfont{\texttt{accept}})
 = \frac{1}{n}$ if $0 \leq i < n$, and zero otherwise.
 \end{myprop}
 \begin{proof}
 By the definition of conditional probability, we have
-\begin{align*}
+\begin{align}
   \Pr(Y=i|\texttt{accept}) = \frac{\Pr(Y=i, \texttt{accept})}{\Pr(\texttt{accept})} 
-  = \frac{\Pr(Y=i)\Pr(\texttt{accept}|Y=i)}{\Pr(\texttt{accept})}
-\end{align*}
+  = \frac{\Pr(Y=i)\Pr(\texttt{accept}|Y=i)}{\Pr(\texttt{accept})} \label{eq:condprob}
+\end{align}
 Noting that $\Pr(\texttt{accept}) = \Pr(Y<n) = \frac{n}{2^l}$, $\Pr(Y=i)=\frac{1}{2^l}$, and 
 $\Pr(\texttt{accept}|Y=i) = \ind_{\{0, ..., n-1\}}(i)$, we have 
 that $\Pr(Y=i|\texttt{accept}) = \frac{1/2^l}{n/2^l} = \frac{1}{n} \ind_{\{0, ..., n-1\}}(i)$
@@ -198,6 +201,7 @@ since
 \end{equation*}
 
 \section{Sampling from unions of variable length sets}
+\label{sec:var}
 From Section~\ref{sec:unif}, given a set $\X$ and an integer $k \geq 1$, it is
 clear how to sample uniformly from $\X^k$: simply repeat the sampling algorithm
 $k$ times. But what happens if we want to sample uniformly from $\X^{m,n}$,
@@ -219,10 +223,35 @@ The algorithm above satisfies $\Pr(Y = \omega) = \frac{1}{ \sum_{i=m}^{n} \abs{X
 \begin{proof}
 A straightforward computation yields
 \begin{align*}
-  \Pr(Y=\omega) = \sum_{k=m}^{n} P(D=k, Y=\omega) = P(D=\abs{\omega})P(Y=\omega | D=\abs{\omega}) = \frac{\abs{X}^{\abs{\omega}}}{ \sum_{i=m}^{n} \abs{\X}^i } \cdot \frac{1}{ \abs{\X}^{\abs{\omega}} } = \frac{1}{ \sum_{i=m}^{n} \abs{X}^i }
+  \Pr(Y=\omega) = \sum_{k=m}^{n} \Pr(D=k, Y=\omega) = \Pr(D=\abs{\omega})\Pr(Y=\omega | D=\abs{\omega}) = \frac{\abs{X}^{\abs{\omega}}}{ \sum_{i=m}^{n} \abs{\X}^i } \cdot \frac{1}{ \abs{\X}^{\abs{\omega}} } = \frac{1}{ \sum_{i=m}^{n} \abs{X}^i }
 \end{align*}
 \end{proof}
 
 \section{Sampling from predicate defined domains}
+From Section~\ref{sec:var}, we can sample efficiently from $\Unif(\X^{m,n})$. Now, we assume
+we are given a predicate $p : \X^{m,n} \longrightarrow \{ \texttt{T}, \texttt{F} \}$.
+Define the set $\mathcal{V}$ as
+\begin{align*}
+  \mathcal{V} \defeq \{ \omega \in \X^{m,n} : p(\omega) = \texttt{T} \}
+\end{align*}
+Our goal is to sample from $\Unif(\mathcal{V})$. It turns out, we have already
+seen a special case of this in Section~\ref{sec:unif}, where we used rejection
+sampling. We can re-apply that technique here in almost the same way. 
+
+\paragraph{Algorithm.} Consider the following sampler.
+\begin{enumerate}
+  \item $Y \rgets \Unif(\X^{m,n})$.
+  \item If $p(Y) = \texttt{T}$, then \verb|accept| $Y$, otherwise \verb|reject| $Y$ and go back to step 2.
+\end{enumerate}
+\begin{myprop}
+  The rejection sampler above satisfies $\Pr(Y=\omega|\normalfont{\texttt{accept}}) = \frac{1}{\abs{\mathcal{V}}}$ for $\omega \in \mathcal{V}$.
+\end{myprop}
+\begin{proof}
+The proof is almost identical to Proposition~\ref{prop:samp1}. Here, the quantities of interest are
+\begin{align*}
+  \Pr(Y=\omega) = \frac{1}{\abs{\X^{m,n}}}, \qquad \Pr(\texttt{accept}) = \frac{\abs{\mathcal{V}}}{\abs{\X^{m,n}}}, \qquad \Pr(\texttt{accept}|Y=\omega) = \ind_{\omega \in \mathcal{V}}
+\end{align*}
+Plugging these quantities into (\ref{eq:condprob}) yields the result.
+\end{proof}
 
 \end{document}
