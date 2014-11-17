@@ -1,6 +1,7 @@
 all: p.pdf
 
-p.pdf: p.tex 
+p.pdf: p.tex
+	pdflatex -shell-escape p.tex
 	pdflatex -shell-escape p.tex
 
 .PHONY: clean

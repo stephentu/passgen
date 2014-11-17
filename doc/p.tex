@@ -126,6 +126,7 @@ We will focus the remainder of this document on answering these two questions.
 Our main tool will be the simple, elegant idea of \emph{rejection sampling}. 
 
 \section{Sampling from arbitrary discrete uniform distributions}
+\label{sec:unif}
 Let's set up some notation. Let $\X$ denote a finite set over some arbitrary
 discrete alphabet, and let $Y$ be a random variable. We write $Y \sim
 \Unif(\X)$ to indicate that $Y$ has the uniform distribution on $\X$.  That is,
@@ -195,6 +196,32 @@ since
     \Pr_{Y \sim \HH_l}(\texttt{reject}) = \frac{1}{\abs{\supp(\HH_l) \setminus \supp(\Pi_n)}}
         \leq \frac{1}{\abs{\supp(\G_k)\setminus\supp(\Pi_n)}} = \Pr_{Y \sim \G_k}(\texttt{reject})
 \end{equation*}
+
+\section{Sampling from unions of variable length sets}
+From Section~\ref{sec:unif}, given a set $\X$ and an integer $k \geq 1$, it is
+clear how to sample uniformly from $\X^k$: simply repeat the sampling algorithm
+$k$ times. But what happens if we want to sample uniformly from $\X^{m,n}$,
+which happens when we want to generate random passwords between say, 10 to 20
+characters long? 
+
+\paragraph{Algorithm.} Turns out, the simple algorithm below suffices. The idea is,
+we first sample $D$, the length of the password to draw. Then, we use the value of
+$D$ to draw a uniform sample from $\X^D$.
+\begin{enumerate}
+  \item $D \rgets k$, with $\Pr(D=k) = \frac{\abs{\X}^k}{\sum_{i=m}^{n} \abs{\X}^i}$ for $k \in \{m, ..., n\}$.
+  \item $Y \rgets \Unif(\X^{D})$.
+  \item Return $Y$ as random draw.
+\end{enumerate}
+
+\begin{myprop}
+The algorithm above satisfies $\Pr(Y = \omega) = \frac{1}{ \sum_{i=m}^{n} \abs{X}^i }$, for $\omega \in \X^{m,n}$.
+\end{myprop}
+\begin{proof}
+A straightforward computation yields
+\begin{align*}
+  \Pr(Y=\omega) = \sum_{k=m}^{n} P(D=k, Y=\omega) = P(D=\abs{\omega})P(Y=\omega | D=\abs{\omega}) = \frac{\abs{X}^{\abs{\omega}}}{ \sum_{i=m}^{n} \abs{\X}^i } \cdot \frac{1}{ \abs{\X}^{\abs{\omega}} } = \frac{1}{ \sum_{i=m}^{n} \abs{X}^i }
+\end{align*}
+\end{proof}
 
 \section{Sampling from predicate defined domains}
 
